@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Segmentation & Purchase Analytics Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-main: #0f172a;
+            --bg-card: #1e293b;
+            --border: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            
+            --col-high: #10b981;
+            --col-regular: #3b82f6;
+            --col-low: #ef4444;
+            --col-accent: #8e44ad;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            padding: 24px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 16px;
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(135deg, #3b82f6 0%, #10b981 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        header p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            margin-top: 4px;
+        }
+
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn-filter {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 500;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-filter:hover {
+            border-color: #3b82f6;
+            background-color: #1e293b80;
+        }
+
+        .btn-filter.active {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            box-shadow: 0 0 12px rgba(59, 130, 246, 0.4);
+        }
+
+        /* KPI Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+            margin-bottom: 24px;
+        }
+
+        .kpi-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 12px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            border-color: #475569;
+        }
+
+        .kpi-card .label {
+            color: var(--text-secondary);
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-card .value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text-primary);
+        }
+
+        .kpi-card .trend {
+            font-size: 12px;
+            margin-top: 6px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .trend-up { color: #10b981; }
+        .trend-neutral { color: #3b82f6; }
+
+        /* Dashboard Grid Layout */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 20px;
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .col-4 { grid-column: span 4; }
+        .col-6 { grid-column: span 6; }
+        .col-8 { grid-column: span 8; }
+        .col-12 { grid-column: span 12; }
+
+        @media (max-width: 1024px) {
+            .col-4, .col-6, .col-8 {
+                grid-column: span 12;
+            }
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-primary);
+            border-left: 3px solid #3b82f6;
+            padding-left: 8px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        /* Detail Inspector Panel */
+        .inspector-panel {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            justify-content: space-between;
+        }
+
+        .inspector-placeholder {
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 40px 20px;
+            font-style: italic;
+            border: 1px dashed var(--border);
+            border-radius: 8px;
+            margin-top: 10px;
+        }
+
+        .inspector-details {
+            background-color: #151f30;
+            border: 1px solid #233550;
+            border-radius: 8px;
+            padding: 16px;
+            margin-top: 10px;
+            display: none;
+        }
+
+        .inspector-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .inspector-row:last-child {
+            border-bottom: none;
+        }
+
+        .inspector-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .inspector-value {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .badge {
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .badge-high { background-color: rgba(16, 185, 129, 0.2); color: var(--col-high); }
+        .badge-regular { background-color: rgba(59, 130, 246, 0.2); color: var(--col-regular); }
+        .badge-low { background-color: rgba(239, 68, 68, 0.2); color: var(--col-low); }
+
+        footer {
+            margin-top: 40px;
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 12px;
+            border-top: 1px solid var(--border);
+            padding-top: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div>
+                <h1>Customer Segmentation & Purchase Analytics</h1>
+                <p>K-Means Clustering Business Insights Dashboard</p>
+            </div>
+            <div class="controls">
+                <span style="font-size: 13px; color: var(--text-secondary);">Interactive Filter:</span>
+                <button class="btn-filter active" onclick="filterSegment('All')">All Customers</button>
+                <button class="btn-filter" onclick="filterSegment('High-Value Customers')">VIPs</button>
+                <button class="btn-filter" onclick="filterSegment('Regular Customers')">Regular</button>
+                <button class="btn-filter" onclick="filterSegment('Low-Value Customers')">Budget</button>
+            </div>
+        </header>
+
+        <!-- KPI Cards -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="label">Total Customers</div>
+                <div class="value" id="kpi-customers">0</div>
+                <div class="trend trend-neutral">Cohort Size</div>
+            </div>
+            <div class="kpi-card">
+                <div class="label">Total Revenue</div>
+                <div class="value" id="kpi-revenue">$0.00</div>
+                <div class="trend trend-up">Annual Sales</div>
+            </div>
+            <div class="kpi-card">
+                <div class="label">Avg. Purchase Frequency</div>
+                <div class="value" id="kpi-freq">0.00</div>
+                <div class="trend trend-up">Purchases / Customer</div>
+            </div>
+            <div class="kpi-card">
+                <div class="label">Avg. Ticket Size</div>
+                <div class="value" id="kpi-ticket">$0.00</div>
+                <div class="trend trend-up">Per Visit average</div>
+            </div>
+        </div>
+
+        <!-- Dashboard Widgets Grid -->
+        <div class="dashboard-grid">
+            <!-- Segment Size Distribution (Donut) -->
+            <div class="card col-4">
+                <div class="card-title">Customer Distribution</div>
+                <div class="chart-container">
+                    <canvas id="chart-donut"></canvas>
+                </div>
+            </div>
+
+            <!-- Revenue Contribution by Segment (Horizontal Bar) -->
+            <div class="card col-4">
+                <div class="card-title">Revenue Contribution ($)</div>
+                <div class="chart-container">
+                    <canvas id="chart-revenue"></canvas>
+                </div>
+            </div>
+
+            <!-- Segment Metric Comparison (Bar) -->
+            <div class="card col-4">
+                <div class="card-title">Frequency vs. Average Ticket</div>
+                <div class="chart-container">
+                    <canvas id="chart-metrics"></canvas>
+                </div>
+            </div>
+
+            <!-- Scatter Plot: Cluster Visualizer (Interactive) -->
+            <div class="card col-8">
+                <div class="card-title">
+                    <span>K-Means Cluster: Spend vs. Frequency</span>
+                    <span style="font-size: 12px; font-weight: normal; color: var(--text-secondary);">Click dots to inspect customer profiles</span>
+                </div>
+                <div class="chart-container" style="height: 380px;">
+                    <canvas id="chart-scatter"></canvas>
+                </div>
+            </div>
+
+            <!-- Customer Detail Inspector + Category Mix -->
+            <div class="card col-4" style="display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="card-title">Customer Inspector</div>
+                    <div class="inspector-panel">
+                        <div id="inspector-placeholder" class="inspector-placeholder">
+                            Click any customer node in the scatter plot to display their segmentation metrics.
+                        </div>
+                        <div id="inspector-details" class="inspector-details">
+                            <div class="inspector-row">
+                                <span class="inspector-label">Customer ID</span>
+                                <span class="inspector-value" id="inspect-id">-</span>
+                            </div>
+                            <div class="inspector-row">
+                                <span class="inspector-label">Segment Group</span>
+                                <span id="inspect-segment" class="badge badge-regular">-</span>
+                            </div>
+                            <div class="inspector-row">
+                                <span class="inspector-label">Total Spend</span>
+                                <span class="inspector-value" id="inspect-spend">-</span>
+                            </div>
+                            <div class="inspector-row">
+                                <span class="inspector-label">Visits (Frequency)</span>
+                                <span class="inspector-value" id="inspect-freq">-</span>
+                            </div>
+                            <div class="inspector-row">
+                                <span class="inspector-label">Avg Ticket Size</span>
+                                <span class="inspector-value" id="inspect-ticket">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div style="margin-top: 20px;">
+                    <div class="card-title" style="margin-bottom: 10px; font-size: 14px; border-left-color: var(--col-accent);">Product Categories Spend</div>
+                    <div class="chart-container" style="height: 180px;">
+                        <canvas id="chart-categories"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            Customer Segmentation & Purchase Analytics Dashboard | Powered by K-Means Clustering & Chart.js
+        </footer>
+    </div>
+
+    <!-- Import data.js -->
+    <script src="datasets/data.js"></script>
+    <script>
+        // Global references to charts
+        let donutChart, revenueChart, metricsChart, scatterChart, categoryChart;
+        let activeFilter = 'All';
+
+        // Palette mapping
+        const colors = {
+            'High-Value Customers': '#10b981',
+            'Regular Customers': '#3b82f6',
+            'Low-Value Customers': '#ef4444'
+        };
+
+        const segmentKeys = ['Low-Value Customers', 'Regular Customers', 'High-Value Customers'];
+
+        // Format helpers
+        const formatCurrency = (val) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val);
+        const formatNumber = (val) => new Intl.NumberFormat('en-US').format(val);
+
+        // Load dashboard on startup
+        window.addEventListener('DOMContentLoaded', () => {
+            initKPIs();
+            initDonutChart();
+            initRevenueChart();
+            initMetricsChart();
+            initScatterChart();
+            initCategoryChart();
+        });
+
+        // Initialize top KPIs
+        function initKPIs() {
+            document.getElementById('kpi-customers').innerText = formatNumber(dashboardData.kpis.totalCustomers);
+            document.getElementById('kpi-revenue').innerText = formatCurrency(dashboardData.kpis.totalRevenue);
+            document.getElementById('kpi-freq').innerText = dashboardData.kpis.avgFrequency.toFixed(2);
+            document.getElementById('kpi-ticket').innerText = formatCurrency(dashboardData.kpis.avgTicket);
+        }
+
+        // 1. Donut Chart - Segment Sizes
+        function initDonutChart() {
+            const ctx = document.getElementById('chart-donut').getContext('2d');
+            const data = segmentKeys.map(k => dashboardData.segments[k].Count);
+            
+            donutChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Low-Value', 'Regular', 'High-Value/VIP'],
+                    datasets: [{
+                        data: data,
+                        backgroundColor: segmentKeys.map(k => colors[k]),
+                        borderWidth: 2,
+                        borderColor: '#1e293b'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', boxWidth: 12, padding: 15 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const val = context.raw;
+                                    const percent = ((val / dashboardData.kpis.totalCustomers) * 100).toFixed(1);
+                                    return ` Customers: ${formatNumber(val)} (${percent}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 2. Revenue Horizontal Bar Chart
+        function initRevenueChart() {
+            const ctx = document.getElementById('chart-revenue').getContext('2d');
+            const data = segmentKeys.map(k => dashboardData.segments[k].TotalSpend);
+            
+            revenueChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Low-Value', 'Regular', 'High-Value/VIP'],
+                    datasets: [{
+                        data: data,
+                        backgroundColor: segmentKeys.map(k => colors[k]),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Revenue: ${formatCurrency(context.raw)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#334155', drawBorder: false },
+                            ticks: { color: '#94a3b8' }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 3. Segment Metrics Comparison Chart (Dual scale or simple group)
+        function initMetricsChart() {
+            const ctx = document.getElementById('chart-metrics').getContext('2d');
+            
+            metricsChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Low-Value', 'Regular', 'High-Value'],
+                    datasets: [
+                        {
+                            label: 'Avg visits (Frequency)',
+                            data: segmentKeys.map(k => dashboardData.segments[k].AvgFreq),
+                            backgroundColor: '#3b82f6',
+                            yAxisID: 'y-freq',
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'Avg ticket ($ Value)',
+                            data: segmentKeys.map(k => dashboardData.segments[k].AvgTicket),
+                            backgroundColor: '#10b981',
+                            yAxisID: 'y-ticket',
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', boxWidth: 12 }
+                        }
+                    },
+                    scales: {
+                        'y-freq': {
+                            type: 'linear',
+                            position: 'left',
+                            grid: { color: '#334155' },
+                            ticks: { color: '#3b82f6' },
+                            title: { display: true, text: 'Visits Count', color: '#3b82f6' }
+                        },
+                        'y-ticket': {
+                            type: 'linear',
+                            position: 'right',
+                            grid: { display: false },
+                            ticks: { color: '#10b981' },
+                            title: { display: true, text: 'Ticket Value ($)', color: '#10b981' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 4. Cluster Scatter Plot
+        function initScatterChart() {
+            const ctx = document.getElementById('chart-scatter').getContext('2d');
+            
+            // Map datasets per segment
+            const datasets = segmentKeys.map(k => {
+                const points = dashboardData.scatter
+                    .filter(c => c.segment === k)
+                    .map(c => ({
+                        x: c.freq,
+                        y: c.spend,
+                        id: c.id,
+                        ticket: c.ticket
+                    }));
+
+                return {
+                    label: k,
+                    data: points,
+                    backgroundColor: colors[k] + 'cc', // 80% opacity
+                    borderColor: colors[k],
+                    borderWidth: 1,
+                    pointRadius: 5,
+                    pointHoverRadius: 8
+                };
+            });
+
+            scatterChart = new Chart(ctx, {
+                type: 'scatter',
+                data: { datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#94a3b8', boxWidth: 12 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const pt = context.raw;
+                                    return ` Customer ${pt.id} | Visits: ${pt.x} | Spend: ${formatCurrency(pt.y)}`;
+                                }
+                            }
+                        }
+                    },
+                    onClick: (event, elements) => {
+                        if (elements.length > 0) {
+                            const el = elements[0];
+                            const pt = scatterChart.data.datasets[el.datasetIndex].data[el.index];
+                            inspectCustomer(pt);
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' },
+                            title: { display: true, text: 'Number of Purchases (Frequency)', color: '#94a3b8' }
+                        },
+                        y: {
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8' },
+                            title: { display: true, text: 'Total Spend ($) (Monetary)', color: '#94a3b8' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // 5. Product Category Spend Chart
+        function initCategoryChart() {
+            const ctx = document.getElementById('chart-categories').getContext('2d');
+            const catLabels = Object.keys(dashboardData.overallCategorySpend);
+            const data = Object.values(dashboardData.overallCategorySpend);
+            
+            categoryChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: catLabels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: '#8e44ad',
+                        borderRadius: 3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 9 } }
+                        },
+                        y: {
+                            grid: { color: '#334155' },
+                            ticks: { color: '#94a3b8', font: { size: 9 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Customer Details Inspector Actions
+        function inspectCustomer(pt) {
+            document.getElementById('inspector-placeholder').style.display = 'none';
+            document.getElementById('inspector-details').style.display = 'block';
+            
+            document.getElementById('inspect-id').innerText = pt.id;
+            
+            // Map index to name
+            const dsIndex = scatterChart.data.datasets.findIndex((_, idx) => scatterChart.data.datasets[idx].label.includes(scatterChart.data.datasets[idx].label));
+            const segmentName = scatterChart.data.datasets.find(ds => ds.data.some(d => d.id === pt.id)).label;
+            
+            const segmentEl = document.getElementById('inspect-segment');
+            segmentEl.innerText = segmentName.replace(' Customers', '');
+            segmentEl.className = 'badge';
+            if (segmentName === 'High-Value Customers') {
+                segmentEl.classList.add('badge-high');
+            } else if (segmentName === 'Regular Customers') {
+                segmentEl.classList.add('badge-regular');
+            } else {
+                segmentEl.classList.add('badge-low');
+            }
+            
+            document.getElementById('inspect-spend').innerText = formatCurrency(pt.y);
+            document.getElementById('inspect-freq').innerText = pt.x;
+            document.getElementById('inspect-ticket').innerText = formatCurrency(pt.ticket);
+        }
+
+        // Filtering Logic
+        function filterSegment(segmentName) {
+            activeFilter = segmentName;
+            
+            // Toggle active class on buttons
+            document.querySelectorAll('.btn-filter').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            
+            const btnIdx = segmentName === 'All' ? 0 : (segmentName === 'High-Value Customers' ? 1 : (segmentName === 'Regular Customers' ? 2 : 3));
+            document.querySelectorAll('.btn-filter')[btnIdx].classList.add('active');
+            
+            // 1. Filter Scatter Plot dataset visibility
+            scatterChart.data.datasets.forEach(dataset => {
+                if (segmentName === 'All' || dataset.label === segmentName) {
+                    dataset.hidden = false;
+                } else {
+                    dataset.hidden = true;
+                }
+            });
+            scatterChart.update();
+            
+            // 2. Update Categories Chart data based on selected segment
+            let newCatData = [];
+            const catLabels = Object.keys(dashboardData.overallCategorySpend);
+            
+            if (segmentName === 'All') {
+                newCatData = Object.values(dashboardData.overallCategorySpend);
+                categoryChart.data.datasets[0].backgroundColor = '#8e44ad';
+            } else {
+                const segData = dashboardData.categorySpendBySegment[segmentName];
+                newCatData = catLabels.map(l => segData[l] || 0);
+                categoryChart.data.datasets[0].backgroundColor = colors[segmentName];
+            }
+            
+            categoryChart.data.datasets[0].data = newCatData;
+            categoryChart.update();
+            
+            // Reset Inspector when filter changes
+            document.getElementById('inspector-details').style.display = 'none';
+            document.getElementById('inspector-placeholder').style.display = 'block';
+        }
+    </script>
+</body>
+</html>
