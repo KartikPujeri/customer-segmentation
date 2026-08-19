@@ -155,14 +155,15 @@ The dashboard helps users understand customer purchasing behavior and compare di
 https://customer-segmentation-six.vercel.app/
 
 ---
+## 👨‍💻 Author
 
-👨‍💻 Author
-Kartik Pujeri
+  **Kartik Pujeri**
 
 B.E. Artificial Intelligence & Machine Learning
-
 Basaveshwara Engineering College, Bagalkot
 
 📌 GitHub: https://github.com/KartikPujeri
-* Live Demo: https://customer-segmentation-six.vercel.app/
 
+🌐 Live Demo: https://customer-segmentation-six.vercel.app/
+
+---
